@@ -15,7 +15,7 @@ def extract_text_from_pdf(pdf_file):
 def stream_summary_from_cohere(text):
     prompt = (
         "Summarize this tender document and give all the important information "
-        "and values required to understand the tender. Include all the details if present in the document or else skip "
+        "and values required to understand the tender. Include all the details "
         "such as tender reference number and ID, tender fee, tender meeting dates and venue, EMD, pre-bid dates and links, Modules, workforce required, eligibility criteria, marking criteria, Performance Security, "
         "CSP Details, location, contract period, implementation period and phases (TAT), organisation, Payment Terms, estimated cost, contact details, submission(Online, Physical) and selection methods(QCBS or L1 selection), existing IHMS Application, etc.\n\n"
         f"{text}"
