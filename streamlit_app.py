@@ -35,7 +35,7 @@ st.set_page_config(page_title="Tender Summarizer", page_icon="📄")
 
 # UI content
 st.title("📄 Tender Document Summarizer")
-st.markdown("Upload a **tender PDF** and get a concise summary with all key information extracted.")
+st.markdown("Upload a **tender PDF** and get a concise summary with all key information extracted. Do not upload scanned PDFs.")
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 
