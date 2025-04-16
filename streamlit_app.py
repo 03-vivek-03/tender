@@ -59,7 +59,7 @@ def stream_summary_from_cohere(text):
             yield chunk.delta.message.content.text
 
 # Set page config
-st.set_page_config(page_title="Tender Summarizer", page_icon="📄")
+st.set_page_config(page_title="Medimaze Tender Summarizer", page_icon="📄")
 
 # UI content
 st.title("📄 Medimaze Tender Summarizer")
