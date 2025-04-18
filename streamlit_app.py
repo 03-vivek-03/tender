@@ -18,8 +18,10 @@ def extract_text_from_pdf(pdf_file):
 def stream_summary_from_cohere(text):
     prompt = (
         """You are an expert in analyzing and summarizing government and institutional tender documents.
-            Summarize the following tender document by extracting and presenting all important and relevant information that may be present. Include all applicable points based on the type of tender. If a section is not relevant or not mentioned, it can be skipped.
-            Ensure the summary includes the following details **if available in the document** and the details you think are important:
+
+            Summarize the following tender document by extracting and presenting all important and relevant information that may be present. Only include the sections that are explicitly mentioned or applicable in the document. **Do not include sections that are not present, not mentioned, or not relevant to the specific tender type.**
+
+            Extract details under the following categories **only if available**:
 
             - Tender Reference Number and ID  
             - Name of the Issuing Organization or Authority  
@@ -43,21 +45,21 @@ def stream_summary_from_cohere(text):
             - Submission Method (Online, Physical, or Hybrid)  
             - Selection Methodology (e.g., QCBS, L1)  
             - Cloud Service Provider (CSP) Details (if applicable)  
-            - Hardware Details (especially for lab-related tenders—include CT/MRI/X-ray/Pathology-related equipment)  
-            - Technical Specifications (for hardware, software, or service)  
+            - Hardware Details (especially for hospital/lab tenders—CT/MRI/X-ray/Pathology equipment)  
+            - Technical Specifications  
             - Radiology/Pathology Scope (if applicable)  
             - Checklists (if provided)  
-            - Declarations, Undertakings, and Affidavits (if required in the tender)  
-            - OEM (Original Equipment Manufacturer) Document Requirements (if required)  
+            - Declarations, Undertakings, and Affidavits  
+            - OEM (Original Equipment Manufacturer) Document Requirements  
             - Penalty Clauses and Bidder Obligations  
             - Financial Bid Structure  
-            - Viability Gap Funding (VGF), if any  
+            - Viability Gap Funding (VGF)  
             - Special Purpose Vehicle (SPV) clauses  
-            - Land Border Sharing Clause (if present)  
+            - Land Border Sharing Clause  
             - Mode of Payments for Tender Fee, EMD, and Other Charges  
             - Contact Details of the Tender Issuer (email, phone, address)
 
-            Present the summary in a well-organized and structured format using clear headings or bullet points for each section.
+            Present the summary in a clean, organized format using clear headings or bullet points. Again, include **only the sections that are actually present in the document** and dont say not mentioned in the document, instead skip that section.
 
             Tender Document:\n\n"""
         f"{text}"
