@@ -17,33 +17,47 @@ def extract_text_from_pdf(pdf_file):
 
 def stream_summary_from_cohere(text):
     prompt = (
-        """You are an expert in understanding and summarizing government tender documents.
-
-            Summarize the following tender document by extracting and presenting all the critical details required for a complete understanding of the tender. Ensure the summary includes (but is not limited to) the following information:
+        """You are an expert in analyzing and summarizing government and institutional tender documents.
+            Summarize the following tender document by extracting and presenting all important and relevant information that may be present. Include all applicable points based on the type of tender. If a section is not relevant or not mentioned, it can be skipped.
+            Ensure the summary includes the following details **if available in the document**:
 
             - Tender Reference Number and ID  
-            - Name of the Organization/Authority  
-            - Tender Fee  
+            - Name of the Issuing Organization or Authority  
+            - Tender Fee (amount, mode of payment)  
+            - EMD (Earnest Money Deposit) Details (amount, mode of payment)  
             - Estimated Tender Value or Project Cost  
-            - EMD (Earnest Money Deposit) Details  
-            - Pre-bid Meeting Dates, Venue, and Registration/Link Details  
+            - Pre-bid Meeting Dates, Venue, and Registration/Link  
             - Tender Meeting Dates and Venues (if different from Pre-bid)  
-            - Modules or Work Packages Covered in the Tender  
-            - Workforce Requirements (if mentioned)  
-            - Eligibility Criteria for Bidders  
+            - Scope of Work  
+            - Modules or Work Packages  
+            - Workforce Requirements (specify onsite manpower and training manpower, if any)  
+            - Human Resource Details  
+            - Technical and Financial Eligibility Criteria  
             - Technical and Financial Marking/Scoring Criteria  
             - Performance Security Requirements  
-            - Cloud Service Provider (CSP) Details, if applicable  
+            - Implementation Timeline and Phases (Turnaround Time or TAT)  
+            - Contract Duration/Period  
             - Project Location(s)  
-            - Contract Period/Duration  
-            - Implementation Timeline and Phases (TAT)  
-            - Details about any existing IHMS or related Application  
+            - Existing IHMS or Software Application Details (if mentioned)  
             - Payment Terms and Schedule  
-            - Submission Methods (Online, Physical, Hybrid)  
-            - Selection Methodology (e.g., QCBS, L1, etc.)  
-            - Contact Information of the Tender Issuer (Phone, Email, Address)
+            - Submission Method (Online, Physical, or Hybrid)  
+            - Selection Methodology (e.g., QCBS, L1)  
+            - Cloud Service Provider (CSP) Details (if applicable)  
+            - Hardware Details (especially for lab-related tenders—include CT/MRI/X-ray/Pathology-related equipment)  
+            - Technical Specifications (for hardware, software, or service)  
+            - Radiology/Pathology Scope (if applicable)  
+            - Checklists (if provided)  
+            - Declarations, Undertakings, and Affidavits (if required in the tender)  
+            - OEM (Original Equipment Manufacturer) Document Requirements (if required)  
+            - Penalty Clauses and Bidder Obligations  
+            - Financial Bid Structure  
+            - Viability Gap Funding (VGF), if any  
+            - Special Purpose Vehicle (SPV) clauses  
+            - Land Border Sharing Clause (if present)  
+            - Mode of Payments for Tender Fee, EMD, and Other Charges  
+            - Contact Details of the Tender Issuer (email, phone, address)
 
-            Present the summary in a clear, structured format using bullet points or headings.
+            Present the summary in a well-organized and structured format using clear headings or bullet points for each section.
 
             Tender Document:\n\n"""
         f"{text}"
@@ -59,10 +73,10 @@ def stream_summary_from_cohere(text):
             yield chunk.delta.message.content.text
 
 # Set page config
-st.set_page_config(page_title="Medimaze Tender Summarizer", page_icon="📄")
+st.set_page_config(page_title="Tender Summarizer", page_icon="📄")
 
 # UI content
-st.title("📄 Medimaze Tender Summarizer")
+st.title("📄 Tender Document Summarizer")
 st.markdown("Upload a **tender PDF** and get a concise summary with all key information extracted.")
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
