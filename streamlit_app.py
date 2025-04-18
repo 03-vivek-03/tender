@@ -19,7 +19,7 @@ def stream_summary_from_cohere(text):
     prompt = (
         """You are an expert in analyzing and summarizing government and institutional tender documents.
             Summarize the following tender document by extracting and presenting all important and relevant information that may be present. Include all applicable points based on the type of tender. If a section is not relevant or not mentioned, it can be skipped.
-            Ensure the summary includes the following details **if available in the document**:
+            Ensure the summary includes the following details **if available in the document** and the details you think are important:
 
             - Tender Reference Number and ID  
             - Name of the Issuing Organization or Authority  
