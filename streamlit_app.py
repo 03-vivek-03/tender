@@ -94,7 +94,7 @@ def stream_summary_from_cohere(text):
             - Mode of Payments for Tender Fee, EMD, and Other Charges  
             - Contact Details of the Tender Issuer (email, phone, address)
 
-            Present the summary in a clean, organized format using clear headings or bullet points. Again, include **only the sections that are actually present in the document** and dont say not mentioned in the document, instead skip that section.
+            Present the summary in a clean, organized format using clear headings or bullet points and also include the page number or reference from where it is taken. Again, include **only the sections that are actually present in the document** and dont say not mentioned in the document, instead skip that section.
 
             Tender Document:\n\n"""
         f"{text}"
