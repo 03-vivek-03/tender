@@ -7,29 +7,38 @@ from docx.shared import Pt
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+import pytz
 
 # Initialize Cohere client
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
 
-def log_to_google_sheet(filename):
+def log_to_google_sheet(filename, file_data, extracted_text):
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-
-    # Load the credentials from the Streamlit secrets
     credentials = Credentials.from_service_account_info(
         st.secrets["google_sheets"],
         scopes=scopes
     )
-
-    # Authorize the client
     client = gspread.authorize(credentials)
-
-    # Open the sheet by name
     sheet = client.open("TenderUsageLogs").sheet1
 
-    # Log the file upload
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    sheet.append_row([now, filename])
+    # Current time in IST
+    ist = pytz.timezone("Asia/Kolkata")
+    timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
 
+    # User IP (Streamlit Cloud gives this in headers)
+    user_ip = st.request.remote_addr if hasattr(st, 'request') else "N/A"
+
+    # File size in KB
+    file_data.seek(0, 2)  # Move to end
+    file_size_kb = round(file_data.tell() / 1024, 2)
+    file_data.seek(0)  # Reset to beginning
+
+    # Extracted text length
+    text_length = len(extracted_text.strip())
+
+    # Append log row
+    sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
+    
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
@@ -108,7 +117,7 @@ uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 if uploaded_file is not None:
     with st.spinner("File uploaded successfully!✅"):
         text = extract_text_from_pdf(uploaded_file)
-        log_to_google_sheet(uploaded_file.name)
+        log_to_google_sheet(uploaded_file.name, uploaded_file, text)
 
     if len(text.strip()) < 100:
         st.error("The uploaded PDF has very little text or is not extractable.")
