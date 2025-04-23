@@ -4,9 +4,22 @@ import PyPDF2
 from docx import Document
 from io import BytesIO
 from docx.shared import Pt
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
 
 # Initialize Cohere client
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
+
+# Setup Google Sheets logging
+def log_to_google_sheet(filename):
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    credentials = Credentials.from_service_account_info(st.secrets["google_sheets"], scopes=scopes)
+    client = gspread.authorize(credentials)
+    sheet = client.open("TenderSummaryLogs").sheet1  # Ensure the sheet name is correct
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sheet.append_row([now, filename])
 
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
@@ -86,12 +99,13 @@ uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 if uploaded_file is not None:
     with st.spinner("File uploaded successfully!✅"):
         text = extract_text_from_pdf(uploaded_file)
+        log_to_google_sheet(uploaded_file.name)
 
     if len(text.strip()) < 100:
         st.error("The uploaded PDF has very little text or is not extractable.")
     else:
         st.success("Generating summary...\n")
-        
+
         # Add a placeholder to dynamically update the summary
         summary_placeholder = st.empty()
         if "summary" not in st.session_state:
@@ -127,7 +141,7 @@ if uploaded_file is not None:
                 # Split the line based on '**' to handle bold text
                 paragraph = doc.add_paragraph()
                 segments = line.split('**')
-                
+
                 for i, segment in enumerate(segments):
                     if i % 2 == 1:  # This part should be bold (because it's between '**')
                         paragraph.add_run(segment).bold = True
@@ -142,7 +156,7 @@ if uploaded_file is not None:
 
         # Download button
         st.download_button(
-            label="📥 Download Summary as Word Document",
+            label="📅 Download Summary as Word Document",
             data=word_buffer,
             file_name="Tender_Summary.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
