@@ -11,13 +11,22 @@ from datetime import datetime
 # Initialize Cohere client
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
 
-# Setup Google Sheets logging
 def log_to_google_sheet(filename):
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    credentials = Credentials.from_service_account_info(st.secrets["google_sheets"], scopes=scopes)
-    client = gspread.authorize(credentials)
-    sheet = client.open("TenderUsageLogs").sheet1  # Ensure the sheet name is correct
 
+    # Load the credentials from the Streamlit secrets
+    credentials = Credentials.from_service_account_info(
+        st.secrets["google_sheets"],
+        scopes=scopes
+    )
+
+    # Authorize the client
+    client = gspread.authorize(credentials)
+
+    # Open the sheet by name
+    sheet = client.open("TenderUsageLogs").sheet1
+
+    # Log the file upload
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sheet.append_row([now, filename])
 
