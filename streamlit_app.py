@@ -16,7 +16,7 @@ def log_to_google_sheet(filename):
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     credentials = Credentials.from_service_account_info(st.secrets["google_sheets"], scopes=scopes)
     client = gspread.authorize(credentials)
-    sheet = client.open("TenderSummaryLogs").sheet1  # Ensure the sheet name is correct
+    sheet = client.open("TenderUsageLogs").sheet1  # Ensure the sheet name is correct
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sheet.append_row([now, filename])
