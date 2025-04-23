@@ -2,3 +2,5 @@ cohere==5.14.0
 streamlit==1.43.2
 pyPDF2==3.0.1
 python-docx==1.1.2
+gspread
+google-auth
