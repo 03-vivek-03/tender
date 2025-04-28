@@ -83,7 +83,7 @@ def stream_summary_from_cohere(text):
             - Hardware Details (especially for hospital/lab tenders—CT/MRI/X-ray/Pathology equipment)  
             - Technical Specifications  
             - Radiology/Pathology Scope (if applicable)  
-            - Checklists (if provided)  
+            - Checklists (All the documents required, if provided)  
             - Declarations, Undertakings, and Affidavits  
             - OEM (Original Equipment Manufacturer) Document Requirements  
             - Penalty Clauses and Bidder Obligations  
