@@ -8,47 +8,121 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
-
+import re
 # Initialize Cohere client
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
 
 def log_to_google_sheet(filename, file_data, extracted_text):
-    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    credentials = Credentials.from_service_account_info(
-        st.secrets["google_sheets"],
-        scopes=scopes
-    )
-    client = gspread.authorize(credentials)
-    sheet = client.open("TenderUsageLogs").sheet1
+#     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+#     credentials = Credentials.from_service_account_info(
+#         st.secrets["google_sheets"],
+#         scopes=scopes
+#     )
+#     client = gspread.authorize(credentials)
+#     sheet = client.open("TenderUsageLogs").sheet1
 
-    # Add headers if sheet is empty
-    if sheet.row_count == 0 or sheet.cell(1, 1).value != "Timestamp":
-        sheet.insert_row(["Timestamp", "Filename", "File Size (KB)", "Text Length", "User IP"], 1)
+#     # Add headers if sheet is empty
+#     if sheet.row_count == 0 or sheet.cell(1, 1).value != "Timestamp":
+#         sheet.insert_row(["Timestamp", "Filename", "File Size (KB)", "Text Length", "User IP"], 1)
 
-    # Current time in IST
-    ist = pytz.timezone("Asia/Kolkata")
-    timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
+#     # Current time in IST
+#     ist = pytz.timezone("Asia/Kolkata")
+#     timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
 
-    # User IP (fallback to N/A)
-    user_ip = st.request.remote_addr if hasattr(st, 'request') else "N/A"
+#     # User IP (fallback to N/A)
+#     user_ip = st.request.remote_addr if hasattr(st, 'request') else "N/A"
 
-    # File size in KB
-    file_data.seek(0, 2)
-    file_size_kb = round(file_data.tell() / 1024, 2)
-    file_data.seek(0)
+#     # File size in KB
+#     file_data.seek(0, 2)
+#     file_size_kb = round(file_data.tell() / 1024, 2)
+#     file_data.seek(0)
 
-    # Extracted text length
-    text_length = len(extracted_text.strip())
+#     # Extracted text length
+#     text_length = len(extracted_text.strip())
 
-    # Append the log
-    sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
-    
+#     # Append the log
+#     sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
+    return True
+
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page in reader.pages:
         text += page.extract_text() or ""
     return text
+
+def generate_table_word(summary_text):
+    # Split lines and extract the first heading (any level)
+    lines = summary_text.splitlines()
+    heading = next((l.strip().lstrip('#').strip() for l in lines if l.strip().startswith('#')), 'Table')
+
+    # Parse keys and their bullet values
+    data = []
+    key = None
+    values = []
+    for line in lines:
+        stripped = line.lstrip('#').strip()
+        if re.match(r'^\*\*.*\*\*$', stripped):  # **Key**
+            if key:
+                data.append((key, values))
+            key = stripped.strip('*').strip()
+            values = []
+        elif stripped.startswith('-') and key:  # - bullet under key
+            values.append(stripped.lstrip('-').strip())
+    if key:
+        data.append((key, values))
+
+    # Create Word document and add heading
+    doc = Document()
+    title_para = doc.add_heading(level=1)
+    run_title = title_para.add_run(heading)
+    run_title.bold = True
+    run_title.font.size = Pt(16)
+
+    doc.add_paragraph()  # spacing
+
+    # Build table
+    table = doc.add_table(rows=1, cols=2)
+    table.style = 'Table Grid'
+    hdr_cells = table.rows[0].cells
+    hdr_cells[0].text = 'Parameter'
+    hdr_cells[1].text = 'Description'
+    for cell in hdr_cells:
+        for p in cell.paragraphs:
+            p.alignment = 1  # Center
+            for run in p.runs:
+                run.bold = True
+                run.font.size = Pt(11)
+
+    # Populate table
+    for key, vals in data:
+        row_cells = table.add_row().cells
+        cell_key = row_cells[0]
+        p_key = cell_key.paragraphs[0]
+        run_key = p_key.add_run(key)
+        run_key.bold = True
+        run_key.font.size = Pt(11)
+
+        cell_val = row_cells[1]
+        if vals:
+            for v in vals:
+                p = cell_val.add_paragraph(style='List Bullet')
+                parts = re.split(r'(\*\*[^*]+\*\*)', v)
+                for part in parts:
+                    if part.startswith('**') and part.endswith('**'):
+                        run = p.add_run(part.strip('*'))
+                        run.bold = True
+                    else:
+                        p.add_run(part)
+        else:
+            cell_val.text = ''
+
+    # Save to BytesIO
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf
+
 
 def stream_summary_from_cohere(text):
     prompt = (
@@ -57,7 +131,7 @@ def stream_summary_from_cohere(text):
             Summarize the following tender document by extracting and presenting all important and relevant information that may be present. Only include the sections that are explicitly mentioned or applicable in the document. **Do not include sections that are not present, not mentioned, or not relevant to the specific tender type.**
 
             Extract details under the following categories **only if available**:
-
+            - Tender Name
             - Tender Reference Number and ID  
             - Name of the Issuing Organization or Authority  
             - Tender Fee (amount, mode of payment)  
@@ -94,8 +168,10 @@ def stream_summary_from_cohere(text):
             - Mode of Payments for Tender Fee, EMD, and Other Charges  
             - Contact Details of the Tender Issuer (email, phone, address)
 
-            Present the summary in a clean, organized format using clear headings or bullet points and also include the page number or reference from where it is taken. Again, include **only the sections that are actually present in the document** and dont say not mentioned in the document, instead skip that section.
-
+            Present the summary in a clean, organized format using clear headings or bullet points. Again, include **only the sections that are actually present in the document** and dont say not mentioned in the document, instead skip that section.
+            
+            At last give me these details seperate again: Tender Name, Tender Type (HIMS, Radiology Lab etc.), Tender registration start date and end date)
+            
             Tender Document:\n\n"""
         f"{text}"
     )
@@ -140,47 +216,59 @@ if uploaded_file is not None:
             summary_text = st.session_state["summary"]
             summary_placeholder.markdown(summary_text)
 
-        # Generate Word document with formatting
-        doc = Document()
-        style = doc.styles["Normal"]
-        style.font.size = Pt(11)
+        # # Generate Word document with formatting
+        # doc = Document()
+        # style = doc.styles["Normal"]
+        # style.font.size = Pt(11)
 
-        doc.add_heading("Tender Summary", level=1)
+        # doc.add_heading("Tender Summary", level=1)
 
-        # Process the summary line by line
-        for line in summary_text.splitlines():
-            line = line.strip()
-            if not line:
-                doc.add_paragraph("")  # Preserve blank lines
-                continue
+        # # Process the summary line by line
+        # for line in summary_text.splitlines():
+        #     line = line.strip()
+        #     if not line:
+        #         doc.add_paragraph("")  # Preserve blank lines
+        #         continue
 
-            # Handle markdown-style headings
-            if line.startswith("####"):
-                doc.add_heading(line.replace("####", "").strip(), level=4)
-            elif line.startswith("###"):
-                doc.add_heading(line.replace("###", "").strip(), level=3)
-            else:
-                # Split the line based on '**' to handle bold text
-                paragraph = doc.add_paragraph()
-                segments = line.split('**')
+        #     # Handle markdown-style headings
+        #     if line.startswith("####"):
+        #         doc.add_heading(line.replace("####", "").strip(), level=4)
+        #     elif line.startswith("###"):
+        #         doc.add_heading(line.replace("###", "").strip(), level=3)
+        #     else:
+        #         # Split the line based on '**' to handle bold text
+        #         paragraph = doc.add_paragraph()
+        #         segments = line.split('**')
 
-                for i, segment in enumerate(segments):
-                    if i % 2 == 1:  # This part should be bold (because it's between '**')
-                        paragraph.add_run(segment).bold = True
-                    else:  # Normal text (no bold)
-                        paragraph.add_run(segment)
+        #         for i, segment in enumerate(segments):
+        #             if i % 2 == 1:  # This part should be bold (because it's between '**')
+        #                 paragraph.add_run(segment).bold = True
+        #             else:  # Normal text (no bold)
+        #                 paragraph.add_run(segment)
 
-        # Save to BytesIO buffer
-        word_buffer = BytesIO()
-        doc.save(word_buffer)
+        # # Save to BytesIO buffer
+        # word_buffer = BytesIO()
+        # doc.save(word_buffer)
 
-        word_buffer.seek(0)
+        # word_buffer.seek(0)
 
-        # Download button
+        # # Download button
+        # st.download_button(
+        #     label="📅 Download Summary",
+        #     data=word_buffer,
+        #     file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}_Summary.docx", # Prefix added here
+        #     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        # )
+
+
+        # Generate table format Word document
+        table_buffer = generate_table_word(summary_text)
+
+        # Second download button for table format
         st.download_button(
-            label="📅 Download Summary as Word Document",
-            data=word_buffer,
-            file_name="Tender_Summary.docx",
+            label="📊 Download Summary in Table format",
+            data=table_buffer,
+            file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}_Table_Summary.docx",  # Prefix from uploaded filename,
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 else:
