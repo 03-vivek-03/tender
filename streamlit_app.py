@@ -13,35 +13,35 @@ import re
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
 
 def log_to_google_sheet(filename, file_data, extracted_text):
-#     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-#     credentials = Credentials.from_service_account_info(
-#         st.secrets["google_sheets"],
-#         scopes=scopes
-#     )
-#     client = gspread.authorize(credentials)
-#     sheet = client.open("TenderUsageLogs").sheet1
+    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    credentials = Credentials.from_service_account_info(
+        st.secrets["google_sheets"],
+        scopes=scopes
+    )
+    client = gspread.authorize(credentials)
+    sheet = client.open("TenderUsageLogs").sheet1
 
-#     # Add headers if sheet is empty
-#     if sheet.row_count == 0 or sheet.cell(1, 1).value != "Timestamp":
-#         sheet.insert_row(["Timestamp", "Filename", "File Size (KB)", "Text Length", "User IP"], 1)
+    # Add headers if sheet is empty
+    if sheet.row_count == 0 or sheet.cell(1, 1).value != "Timestamp":
+        sheet.insert_row(["Timestamp", "Filename", "File Size (KB)", "Text Length", "User IP"], 1)
 
-#     # Current time in IST
-#     ist = pytz.timezone("Asia/Kolkata")
-#     timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
+    # Current time in IST
+    ist = pytz.timezone("Asia/Kolkata")
+    timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
 
-#     # User IP (fallback to N/A)
-#     user_ip = st.request.remote_addr if hasattr(st, 'request') else "N/A"
+    # User IP (fallback to N/A)
+    user_ip = st.request.remote_addr if hasattr(st, 'request') else "N/A"
 
-#     # File size in KB
-#     file_data.seek(0, 2)
-#     file_size_kb = round(file_data.tell() / 1024, 2)
-#     file_data.seek(0)
+    # File size in KB
+    file_data.seek(0, 2)
+    file_size_kb = round(file_data.tell() / 1024, 2)
+    file_data.seek(0)
 
-#     # Extracted text length
-#     text_length = len(extracted_text.strip())
+    # Extracted text length
+    text_length = len(extracted_text.strip())
 
-#     # Append the log
-#     sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
+    # Append the log
+    sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
     return True
 
 def extract_text_from_pdf(pdf_file):
