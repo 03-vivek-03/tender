@@ -9,8 +9,14 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
 import re
+import json
+import requests
+from dateutil import parser
+
 # Initialize Cohere client
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
+
+data = None
 
 def log_to_google_sheet(filename, file_data, extracted_text):
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -44,11 +50,104 @@ def log_to_google_sheet(filename, file_data, extracted_text):
     sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
     return True
 
+def extract_tender_info(text):
+    TenderName = None
+    TenderType = None
+    StartDate = None
+    EndDate = None
+
+    # A single regex to match dd[-/.]mm[-/.]yyyy or Month DD, YYYY
+    date_regex = (
+        r"(\d{1,2}[-/.]\d{2}[-/.]\d{4}"
+        r"|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+        r"\s+\d{1,2},\s+\d{4})"
+    )
+
+    lines = text.splitlines()
+    for idx, raw in enumerate(lines):
+        ln = raw.strip()
+
+        # 1) Inline Tender Name match (highest priority)
+        m_name_inline = re.search(r"Tender\s+Name\*{0,2}\s*[:\-]\s*(.+)", ln, re.IGNORECASE)
+        if m_name_inline:
+            TenderName = m_name_inline.group(1).strip()
+            # once we get it inline, no need to check heading
+            continue
+
+        # 2) Heading Tender Name (if inline wasn't present)
+        if TenderName is None and re.match(r"^####\s*\*{0,2}Tender\s+Name\*{0,2}", ln, re.IGNORECASE):
+            # next non-empty, non-heading, non-bullet line
+            for nxt in lines[idx+1:]:
+                cand = nxt.strip()
+                if cand and not cand.startswith("####") and not cand.startswith("-"):
+                    TenderName = cand
+                    break
+        
+        # List of common labels that can refer to Tender Type
+        tender_type_keywords = [
+            r"Tender\s+Type", r"Type\s+of\s+Tender", r"Tender\s+Category"
+        ]
+
+        # Join them into a single regex pattern using alternation
+        label_pattern = "|".join(tender_type_keywords)
+
+        # Updated regex to capture different formats (inline or bullet)
+        tender_type_regex = re.compile(
+            rf"(?:^|\n|\r|[\*\-•])\s*(?:{label_pattern})\*{{0,2}}\s*[:\-–]\s*(.+)",
+            re.IGNORECASE
+        )
+                # Sample line (you can loop this over all lines in your text)
+        m_type = tender_type_regex.search(ln)
+        if m_type:
+            TenderType = m_type.group(1).strip()
+
+        # 4) Start Date
+        if re.search(r"Start\s+Date", ln, re.IGNORECASE):
+            m = re.search(date_regex, ln)
+            if m:
+                raw_date = m.group(1)
+                try:
+                    parsed_date = parser.parse(raw_date)
+                    StartDate = parsed_date.strftime('%Y-%m-%d')  # Format to YYYY-MM-DD
+                except Exception as e:
+                    print(f"Date parsing failed: {e}")
+
+        # 5) End Date
+        if re.search(r"End\s+Date", ln, re.IGNORECASE):
+            m = re.search(date_regex, ln)
+            if m:
+                raw_date = m.group(1)
+                try:
+                    parsed_date = parser.parse(raw_date)
+                    EndDate = parsed_date.strftime('%Y-%m-%d')  # Format to YYYY-MM-DD
+                except Exception as e:
+                    print(f"Date parsing failed: {e}")
+    print(TenderType)
+    return {
+        "TenderName": TenderName,
+        "TenderType": TenderType,
+        "StartDate": StartDate,
+        "EndDate": EndDate,
+    }
+
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page in reader.pages:
         text += page.extract_text() or ""
+    return text
+
+def extract_text_from_docx(docx_file):
+    doc = Document(docx_file)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text + "\n"
+    # Extract text from tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                text += cell.text + " "
+            text += "\n"
     return text
 
 def generate_table_word(summary_text):
@@ -60,15 +159,41 @@ def generate_table_word(summary_text):
     data = []
     key = None
     values = []
-    for line in lines:
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         stripped = line.lstrip('#').strip()
+        
+        # Check if this is a heading/key line
         if re.match(r'^\*\*.*\*\*$', stripped):  # **Key**
             if key:
+                # Add the previous key and its values to our data
                 data.append((key, values))
+            
             key = stripped.strip('*').strip()
             values = []
-        elif stripped.startswith('-') and key:  # - bullet under key
+            
+            # Look ahead to check if the next line is a heading or content
+            next_index = i + 1
+            # Skip empty lines
+            while next_index < len(lines) and not lines[next_index].strip():
+                next_index += 1
+                
+            # If we have content but no more lines, or next line is not a heading
+            if next_index >= len(lines) or not re.match(r'^#+\s+\*\*.*\*\*$', lines[next_index].strip()):
+                # Check if next line is not a bullet point but has content
+                if next_index < len(lines) and not lines[next_index].strip().startswith('-') and lines[next_index].strip():
+                    # Add the entire paragraph as a value
+                    values.append(lines[next_index].strip())
+        
+        # Check for bullet points under a key
+        elif stripped.startswith('-') and key:
             values.append(stripped.lstrip('-').strip())
+            
+        i += 1
+    
+    # Don't forget the last key-value pair
     if key:
         data.append((key, values))
 
@@ -125,6 +250,8 @@ def generate_table_word(summary_text):
 
 
 def stream_summary_from_cohere(text):
+    global data
+    x = ""
     prompt = (
         """You are an expert in analyzing and summarizing government and institutional tender documents.
 
@@ -184,23 +311,36 @@ def stream_summary_from_cohere(text):
     for chunk in response:
         if chunk and chunk.type == "content-delta":
             yield chunk.delta.message.content.text
+            x += chunk.delta.message.content.text
+
+    data = extract_tender_info(x)
+    data["authKey"] = "39219AD267DD45ACA026DF6E0C73B587"
+    
 
 # Set page config
 st.set_page_config(page_title="Tender Summarizer", page_icon="📄")
 
 # UI content
 st.title("📄 Tender Document Summarizer")
-st.markdown("Upload a **tender PDF** and get a concise summary with all key information extracted.")
+st.markdown("Upload a **tender PDF or Word document** and get a concise summary with all key information extracted.")
 
-uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
+uploaded_file = st.file_uploader("Upload Document", type=["pdf", "docx"])
 
 if uploaded_file is not None:
     with st.spinner("File uploaded successfully!✅"):
-        text = extract_text_from_pdf(uploaded_file)
+        # Extract text based on file type
+        if uploaded_file.name.lower().endswith('.pdf'):
+            text = extract_text_from_pdf(uploaded_file)
+        elif uploaded_file.name.lower().endswith('.docx'):
+            text = extract_text_from_docx(uploaded_file)
+        else:
+            st.error("Unsupported file format. Please upload a PDF or Word document.")
+            text = ""
+            
         log_to_google_sheet(uploaded_file.name, uploaded_file, text)
 
     if len(text.strip()) < 100:
-        st.error("The uploaded PDF has very little text or is not extractable.")
+        st.error("The uploaded document has very little text or is not extractable.")
     else:
         st.success("Generating summary...\n")
 
@@ -216,51 +356,6 @@ if uploaded_file is not None:
             summary_text = st.session_state["summary"]
             summary_placeholder.markdown(summary_text)
 
-        # # Generate Word document with formatting
-        # doc = Document()
-        # style = doc.styles["Normal"]
-        # style.font.size = Pt(11)
-
-        # doc.add_heading("Tender Summary", level=1)
-
-        # # Process the summary line by line
-        # for line in summary_text.splitlines():
-        #     line = line.strip()
-        #     if not line:
-        #         doc.add_paragraph("")  # Preserve blank lines
-        #         continue
-
-        #     # Handle markdown-style headings
-        #     if line.startswith("####"):
-        #         doc.add_heading(line.replace("####", "").strip(), level=4)
-        #     elif line.startswith("###"):
-        #         doc.add_heading(line.replace("###", "").strip(), level=3)
-        #     else:
-        #         # Split the line based on '**' to handle bold text
-        #         paragraph = doc.add_paragraph()
-        #         segments = line.split('**')
-
-        #         for i, segment in enumerate(segments):
-        #             if i % 2 == 1:  # This part should be bold (because it's between '**')
-        #                 paragraph.add_run(segment).bold = True
-        #             else:  # Normal text (no bold)
-        #                 paragraph.add_run(segment)
-
-        # # Save to BytesIO buffer
-        # word_buffer = BytesIO()
-        # doc.save(word_buffer)
-
-        # word_buffer.seek(0)
-
-        # # Download button
-        # st.download_button(
-        #     label="📅 Download Summary",
-        #     data=word_buffer,
-        #     file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}_Summary.docx", # Prefix added here
-        #     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        # )
-
-
         # Generate table format Word document
         table_buffer = generate_table_word(summary_text)
 
@@ -271,8 +366,28 @@ if uploaded_file is not None:
             file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}_Table_Summary.docx",  # Prefix from uploaded filename,
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
+
+        # Reset file pointer
+        uploaded_file.seek(0)
+        table_buffer.seek(0)
+        # Prepare multipart files
+        files = {
+            "AttachedFile": (uploaded_file.name, uploaded_file, uploaded_file.type),
+            "SummarizedFile": ("table_summary.docx", table_buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        }
+
 else:
-    st.info("Please upload a tender PDF file to begin.")
+    st.info("Please upload a tender PDF or Word document to begin.")
+
+# Send POST request
+response = requests.post("https://ilis.techjivaaindia.in//api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
+
+# Print response status and content
+# print("\n=== RESPONSE STATUS ===")
+# print(response.status_code)
+
+# print("\n=== RESPONSE BODY ===")
+# print(response.text)
 
 # Footer and close centered div
 st.markdown("---")
