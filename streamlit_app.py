@@ -48,7 +48,6 @@ def log_to_google_sheet(filename, file_data, extracted_text):
 
     # Append the log
     sheet.append_row([timestamp, filename, f"{file_size_kb} KB", text_length, user_ip])
-    return True
 
 def extract_tender_info(text):
     TenderName = None
