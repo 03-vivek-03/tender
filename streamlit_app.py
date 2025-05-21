@@ -375,12 +375,12 @@ if uploaded_file is not None:
             "AttachedFile": (uploaded_file.name, uploaded_file, uploaded_file.type),
             "SummarizedFile": ("table_summary.docx", table_buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         }
+        
+        # Send POST request
+        response = requests.post("https://ilis.techjivaaindia.in//api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
 
 else:
     st.info("Please upload a tender PDF or Word document to begin.")
-
-# Send POST request
-response = requests.post("https://ilis.techjivaaindia.in//api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
 
 # Print response status and content
 # print("\n=== RESPONSE STATUS ===")
