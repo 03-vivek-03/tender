@@ -2,7 +2,7 @@ name: Keep Streamlit App Alive
 
 on:
   schedule:
-    - cron: '*/2 * * * *'  # Every 2 hours
+    - cron: '*/6 * * * *'  # Every 6 minutes (NOT 2 hours)
   workflow_dispatch:        # Allow manual run
 
 jobs:
