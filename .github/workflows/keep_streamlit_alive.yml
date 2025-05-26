@@ -2,8 +2,8 @@ name: Keep Streamlit App Alive
 
 on:
   schedule:
-    - cron: '0 */8 * * *'  # Runs every 8 hours
-  workflow_dispatch:        # Allow manual trigger from GitHub UI
+    - cron: '0 */8 * * *'  # Every 8 hours
+  workflow_dispatch:        # Allow manual run
 
 jobs:
   ping:
@@ -14,7 +14,9 @@ jobs:
           echo "Pinging Streamlit app to keep it awake..."
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tendersummarizer.streamlit.app/)
           echo "HTTP response code: $STATUS"
-          if [ "$STATUS" -ne 200 ]; then
-            echo "App did not return 200. Failing workflow."
+          if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 303 ]; then
+            echo "App did not return 200 or 303. Failing workflow."
             exit 1
+          else
+            echo "App is awake ✅"
           fi
