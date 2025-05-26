@@ -16,6 +16,7 @@ from dateutil import parser
 # Initialize Cohere client
 co = cohere.ClientV2(api_key="okYrKAw1OPZoMnOSCR6rUVO2cbSulB4gCmuo04UY")  # Replace with your key
 
+#initialising data variable
 data = None
 
 def log_to_google_sheet(filename, file_data, extracted_text):
