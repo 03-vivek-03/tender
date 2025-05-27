@@ -186,10 +186,13 @@ def generate_table_word(summary_text):
                 if next_index < len(lines) and not lines[next_index].strip().startswith('-') and lines[next_index].strip():
                     # Add the entire paragraph as a value
                     values.append(lines[next_index].strip())
-        
-        # Check for bullet points under a key
-        elif stripped.startswith('-') and key:
-            values.append(stripped.lstrip('-').strip())
+      
+        elif key and (stripped.startswith('-') or re.match(r'^\d+\.', stripped)):
+            # Remove leading -, 1., 2. etc.
+            cleaned = re.sub(r'^[-\d.]+\s*', '', stripped)
+            # Prevent duplicates
+            if cleaned not in values:
+                values.append(cleaned)
             
         i += 1
     
