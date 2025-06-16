@@ -380,7 +380,7 @@ if uploaded_file is not None:
         }
         
         # Send POST request
-        response = requests.post("https://ilis.krsnaadiagnostics.com//api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
+        response = requests.post("https://ilis.krsnaadiagnostics.com/api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
 
 else:
     st.info("Please upload a tender PDF or Word document to begin.")
