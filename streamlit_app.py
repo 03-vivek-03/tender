@@ -289,6 +289,7 @@ def stream_summary_from_cohere(text):
             - Radiology/Pathology Scope (if applicable)  
             - Checklists (All the documents required, if provided)  
             - Declarations, Undertakings, and Affidavits  
+            - Consortium/ Joint Venture
             - OEM (Original Equipment Manufacturer) Document Requirements  
             - Penalty Clauses and Bidder Obligations  
             - Financial Bid Structure  
