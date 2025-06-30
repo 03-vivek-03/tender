@@ -380,10 +380,10 @@ if uploaded_file is not None:
             "SummarizedFile": ("table_summary.docx", table_buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         }
         
-        # Send POST request
-        # response = requests.post("https://ilis.krsnaadiagnostics.com/api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
-        # for testing
-        response = requests.post("https://ilis.techjivaaindia.in/api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
+        #Send POST request
+        response = requests.post("https://ilis.krsnaadiagnostics.com/api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
+        #for testing
+        # response = requests.post("https://ilis.techjivaaindia.in/api/Tender_SummarizerController/Tender_Summarizer", data=data, files=files)
 
 else:
     st.info("Please upload a tender PDF or Word document to begin.")
